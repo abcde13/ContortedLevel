@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nifty xmlns="http://nifty-gui.sourceforge.net/nifty-1.3.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nifty-gui.sourceforge.net/nifty-1.3.xsd http://nifty-gui.sourceforge.net/nifty-1.3.xsd">
+  <screen id="start" controller = "mygame.LevelState">
+    <layer id="foreground" backgroundColor="#0000" childLayout="vertical">
+        <panel id="panel_top" height="25%" width = "100%" childLayout="horizontal">
+            <panel id="panel_left" height="100%" width="25%" align="left" childLayout="center"> 
+                <text  text="retry (r)" font="Interface/Fonts/Zorque.fnt" id="resetButton" align="center" valign="center" visibleToMouse="true" height="100%" width="100%" > </text> 
+            </panel>
+            <panel id = "panel_leftmid" height="100%" width="25%" childLayout="horizontal">
+                <text id="levelNumber" text="Level ${CALL.getLevelNumber()}"font="Interface/Fonts/Zorque.fnt" height="100%" width="100%"/>                
+            </panel>
+            <panel id = "panel_rightmid" height="100%" width="25%" childLayout="vertical">
+                <text id="gravity" text="Gravity" font="Interface/Fonts/Zorque.fnt" height="50%" width="100%"/>                
+            </panel>
+            <panel id="panel_ball" height="100%" width="25%" align="right" childLayout="vertical">  
+                <text color="#3EFF1B" text="ball" font="Interface/Fonts/Zorque.fnt" width="100%" height="50%" />
+                <text color="#FF1BBF" text="goal" font="Interface/Fonts/Zorque.fnt" width="100%" height="50%" />
+            </panel>
+        </panel>
+    </layer>
+  </screen>
+</nifty>
