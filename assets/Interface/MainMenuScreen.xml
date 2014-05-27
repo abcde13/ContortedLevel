@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nifty xmlns="http://nifty-gui.sourceforge.net/nifty-1.3.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nifty-gui.sourceforge.net/nifty-1.3.xsd http://nifty-gui.sourceforge.net/nifty-1.3.xsd">
+  <!-- +++++++++++++++++++++++++++++++++++++++ -->
+  <!-- start screen -->
+  <!-- +++++++++++++++++++++++++++++++++++++++ -->
+  <screen id="main" controller="mygame.Main">
+    <layer id="layer"  childLayout="vertical">
+      <panel id="panel_filler1" height="10%" width = "100%" childLayout="horizontal"></panel>
+      <panel id="panel_title" height="25%" width="50%" align="center" valign="bottom"  childLayout="vertical" visibleToMouse="true">
+        <text id="title" font="Interface/Fonts/Zorque.fnt" text="Meta-Aware" align="center" valign="bottom" >
+        </text>
+      </panel>
+      <panel id="info" height="50%" width="100%" align="center" valign="center"  childLayout="horizontal" visibleToMouse="true">
+        <panel id="panel" height="100%" width="50%" align="center" valign="center"  childLayout="vertical" visibleToMouse="true">
+
+          <panel id="panel_start" height="50%" width="100%" align="center" valign="center"  childLayout="center" visibleToMouse="true">
+
+            <text id="Start" font="Interface/Fonts/Zorque.fnt" text="New Game" align="center" valign="center" >
+                <interact onClick="startnew()"></interact>
+            </text>
+          </panel>
+          <panel id="panel_cont" height="50%" width="100%" align="center" valign="center"  childLayout="center" visibleToMouse="true">
+
+            <text id="Cont" font="Interface/Fonts/Zorque.fnt" text="Continue" align="center" valign="center">
+                <interact onClick="cont()"></interact>
+            </text>
+          </panel>
+
+        </panel>
+        <panel id="panel" height="100%" width="50%" align="center" valign="center"  childLayout="vertical" visibleToMouse="true">
+          <panel id="panel" height="100%" width="100%" align="center" valign="center"  childLayout="vertical" visibleToMouse="true">
+
+            <text wrap="true" font="Interface/Fonts/ZorqueSmall.fnt" text="[WASD]">
+            </text>
+            <text wrap="true" font="Interface/Fonts/ZorqueSmall.fnt" text="Move ball/building" > 
+            </text>
+            <text wrap="true" font="Interface/Fonts/ZorqueSmall.fnt" text="[SPACE]">
+            </text>
+            <text wrap="true" font="Interface/Fonts/ZorqueSmall.fnt" text="Switch from ball/building">
+            </text>
+          </panel>
+
+        </panel>
+      </panel>
+    </layer>
+  </screen>
+</nifty>

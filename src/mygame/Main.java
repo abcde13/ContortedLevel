@@ -1,11 +1,14 @@
 package mygame;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.plugins.FileLocator;
+import com.jme3.audio.AudioNode;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.BoxCollisionShape;
 import com.jme3.bullet.collision.shapes.CompoundCollisionShape;
 import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.export.binary.BinaryExporter;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
@@ -19,19 +22,31 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.Arrow;
 import de.lessvoid.nifty.Nifty;
+import de.lessvoid.nifty.screen.Screen;
+import de.lessvoid.nifty.screen.ScreenController;
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * test
  * @author normenhansen
  */
-public class Main extends SimpleApplication {
+public class Main extends SimpleApplication implements ScreenController {
 
     private Node building;
     private Vector3f extent;
     private Node rotateNode;
     private BulletAppState bas;
-    public static Vector3f[] start = {new Vector3f(-5,50,-5),new Vector3f(-5,50,-5),new Vector3f(-5,50,-5)};
-    public static Vector3f[] goals = new Vector3f[3]; 
+    private Nifty nifty;
+    private Screen screen;
+    public static Node saveData;
+    public static Vector3f[] start = {new Vector3f(-5,50,-5),
+        new Vector3f(-5,50,-5),new Vector3f(-5,50,-5),new Vector3f(-5,50,-5),new Vector3f(-5,50,-5)
+        ,new Vector3f(-5,50,-5),new Vector3f(-5,50,-5),new Vector3f(-5,50,-5),new Vector3f(-5,50,-5)
+        ,new Vector3f(-5,50,-5)};
+    public static Vector3f[] goals = new Vector3f[10]; 
     public static void main(String[] args) {
         Main app = new Main();
         app.start();
@@ -39,30 +54,38 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
-      
+        saveData = new Node("save data");
         setDisplayFps(false);
         setDisplayStatView(false);
         bas = new BulletAppState();
         stateManager.attach(bas);
         flyCam.setEnabled(false);
+        cam.setLocation(new Vector3f(50,50,50));
+        cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
         initScene();
         
-        goals[0] = new Vector3f(0f, -extent.getY()-2f, 0f);
-        goals[1] = new Vector3f(10f,10f,10f);
-        goals[2] = new Vector3f(20,2,0);
+        goals[0] = new Vector3f(5,40,10f);
+        goals[1] = new Vector3f(20,40,10f);
+        goals[2] = new Vector3f(20,5,10f);
+        goals[3] = new Vector3f(0f, -extent.getY()-10f, 0f);
+        goals[4] = new Vector3f(10f,5f,10f);
+        goals[5] = new Vector3f(-20,10,0);
+        goals[6] = new Vector3f(20,2,20);
+        goals[7] = new Vector3f(20,10,0);
+        goals[8] = new Vector3f(20,10,5);
+        goals[9] = new Vector3f(20,20,0);
         
         NiftyJmeDisplay niftyDisplay = new NiftyJmeDisplay(
             assetManager, inputManager, audioRenderer, guiViewPort);
         /** Create a new NiftyGUI object */
-        Nifty nifty = niftyDisplay.getNifty();
+        nifty = niftyDisplay.getNifty();
         guiViewPort.addProcessor(niftyDisplay);
         
-        LevelState levels = new LevelState(bas,1,building,rotateNode,nifty);
-        stateManager.attach(levels);
         
         
-        nifty.registerScreenController(levels);
-        nifty.fromXml("Interface/LevelScreen.xml", "start"); 
+        nifty.registerScreenController(this);
+        nifty.fromXml("Interface/MainMenuScreen.xml","main");
+         
         
         
     }
@@ -189,7 +212,8 @@ public class Main extends SimpleApplication {
        
         bas.getPhysicsSpace().add(scenePhysics);
         
-        
+        AudioNode bg = new AudioNode(assetManager, "Sounds/BG.wav",true);
+        bg.play();
         
         
     }
@@ -219,6 +243,60 @@ public class Main extends SimpleApplication {
         rootNode.attachChild(g);
         return g;
       }
+      
+    @Override
+    public void stop() {
+        String userHome = System.getProperty("user.home");
+        BinaryExporter exporter = BinaryExporter.getInstance();
+        File file = new File(userHome+"/MyGame.j3o");
+        try {
+            exporter.save(saveData, file);
+        } catch (IOException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, "Error: Failed to save game!", ex);
+        }   
+        super.stop(); // continue quitting the game
+    }
+
+    public void bind(Nifty nifty, Screen screen) {
+        this.nifty = nifty;
+        this.screen = screen;
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public void onStartScreen() {
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public void onEndScreen() {
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
     
+    public void startnew(){
+        LevelState levels = new LevelState(bas,1,building,rotateNode,nifty,true);
+        stateManager.attach(levels);
+        nifty.registerScreenController(levels);
+        nifty.fromXml("Interface/LevelScreen.xml", "start");
+        nifty.gotoScreen("start");
+        
+        
+    }
+    public void cont(){
+        System.out.println("Continuing");
+        String userHome = System.getProperty("user.home");
+        assetManager.registerLocator(userHome, FileLocator.class);
+        Node loadedNode = (Node)assetManager.loadModel("/MyGame.j3o");
+        System.out.println(loadedNode.getUserData("LEVEL"));
+        LevelState levels;
+        if(loadedNode.getUserData("LEVEL")==null){
+            levels = new LevelState(bas,1,building,rotateNode,nifty,true);
+        } else {
+            levels = new LevelState(bas,(Integer)loadedNode.getUserData("LEVEL"),building,rotateNode,nifty,true);
+        }
+        stateManager.attach(levels);
+        nifty.registerScreenController(levels);
+        nifty.fromXml("Interface/LevelScreen.xml", "start");
+        nifty.gotoScreen("start");
+    
+    }
     
 }

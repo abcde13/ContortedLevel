@@ -4,6 +4,7 @@
  */
 package mygame;
 
+import com.jme3.animation.LoopMode;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.AbstractAppState;
@@ -14,7 +15,15 @@ import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.SphereCollisionShape;
 import com.jme3.bullet.control.GhostControl;
 import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.cinematic.Cinematic;
+import com.jme3.cinematic.MotionPath;
+import com.jme3.cinematic.MotionPathListener;
+import com.jme3.cinematic.events.CinematicEvent;
+import com.jme3.cinematic.events.CinematicEventListener;
+import com.jme3.cinematic.events.MotionEvent;
+import com.jme3.cinematic.events.MotionTrack;
 import com.jme3.font.BitmapFont;
+import com.jme3.font.BitmapText;
 import com.jme3.input.ChaseCamera;
 import com.jme3.input.InputManager;
 import com.jme3.input.KeyInput;
@@ -27,8 +36,10 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
+import com.jme3.scene.CameraNode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.control.CameraControl.ControlDirection;
 import com.jme3.scene.shape.Sphere;
 import de.lessvoid.nifty.Nifty;
 import de.lessvoid.nifty.elements.Element;
@@ -64,8 +75,11 @@ public class LevelState extends AbstractAppState implements ScreenController{
     private AppStateManager stateManager;
     private Nifty nifty;
     private Screen screen;
+    private CameraNode camNode;
+    private boolean repeat;
+    private ChaseCamera camera;
  
-    public LevelState(BulletAppState bas, int ln,Node building, Node rn, Nifty nifty){
+    public LevelState(BulletAppState bas, int ln,Node building, Node rn, Nifty nifty,boolean repeat){
         this.bas = bas;
         levelNumber = ln;
         this.building = building;
@@ -73,6 +87,7 @@ public class LevelState extends AbstractAppState implements ScreenController{
         this.nifty = nifty;
         screen = nifty.getCurrentScreen();
         this.extent = ((BoundingBox) building.getWorldBound()).getExtent(new Vector3f());
+        this.repeat = repeat;
         
     }
     
@@ -87,11 +102,13 @@ public class LevelState extends AbstractAppState implements ScreenController{
         nifty.setDebugOptionPanelColors(false);
         
         
+        Main.saveData.setUserData("LEVEL", levelNumber);
+      
+        
+        
         guiNode = this.app.getGuiNode();
         this.stateManager = stateManager;
-        guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-        Element levelText = screen.findElementByName("levelNumber");
-        levelText.getRenderer(TextRenderer.class).setText("Level " + levelNumber);
+        
 
         
         Sphere sphere = new Sphere(30,30,1f);
@@ -110,8 +127,9 @@ public class LevelState extends AbstractAppState implements ScreenController{
         ballControl.setRestitution(1f);
         ballControl.setGravity(new Vector3f(0,-10f,0));
         
-        ChaseCamera camera = new ChaseCamera(cam,ball,inputManager);
-        camera.setDefaultDistance(50f);
+        
+        
+        
         setUpKeys();
         
         Sphere sphere2 = new Sphere(30,30,1f);
@@ -122,11 +140,11 @@ public class LevelState extends AbstractAppState implements ScreenController{
         goal.setMaterial(mat2);
         goalControl = new GhostControl(new SphereCollisionShape(1f));
         
-        rotateNode.attachChild(goal);
+        rootNode.attachChild(goal);
         goal.addControl(goalControl);
         bas.getPhysicsSpace().add(goalControl);
-        originalBuildingRotation = rotateNode.getLocalRotation();
-        System.out.println(originalBuildingRotation);
+        
+        //building.setLocalRotation(originalRotation);
         goal.setLocalTranslation(Main.goals[levelNumber-1]);
         
         //bas.setDebugEnabled(true);
@@ -134,7 +152,6 @@ public class LevelState extends AbstractAppState implements ScreenController{
         gpointer = (Node)assetManager.loadModel("Models/arrow.j3o");
         gpointer.setLocalScale(gpointer.getLocalScale().multLocal(5,-5,5));
         System.out.println(cam.getLocation() + " " + cam.getFrustumLeft());
-        Element panel = screen.findElementByName("panel_top");
         Element g = screen.findElementByName("gravity");
         gpointer.setLocalTranslation(new Vector3f
                 (g.getX()+g.getWidth()/2f,app.getContext().getSettings().getHeight()-g.getHeight(),0));
@@ -144,7 +161,50 @@ public class LevelState extends AbstractAppState implements ScreenController{
         gpointer.rotate(setup);*/
         guiNode.attachChild(gpointer);
         
+        if(repeat){
+            camNode = new CameraNode("Motion cam", cam);
+            camNode.setControlDir(ControlDirection.SpatialToCamera);
+            camNode.setEnabled(true);
+            final MotionPath path = new MotionPath();
+            path.setCycle(false);
+            path.addWayPoint(goal.getLocalTranslation().subtract(-50, 30, 0));
+           // path.addWayPoint(goal.getLocalTranslation().subtract(-50, -50, 0));
+            path.addWayPoint(ball.getLocalTranslation().subtract(-50,-70,0));
+            //path.sewayPoin)tIndex == 1tCurveTension(1f);
+            //path.enableDebugShape(assetManager, rootNode);
+
+
+            final MotionEvent cameraMotionControl = new MotionEvent(camNode, path);
+            cameraMotionControl.setLoopMode(LoopMode.DontLoop);
+            //cameraMotionControl.setDuration(15f);
+            cameraMotionControl.setLookAt(rotateNode.getLocalTranslation(), Vector3f.UNIT_Y);
+            cameraMotionControl.setDirectionType(MotionEvent.Direction.LookAt);
+            final Cinematic cinematic = new Cinematic(rootNode,14);
+            cinematic.addCinematicEvent(0, cameraMotionControl);
+            rootNode.attachChild(camNode);
+            stateManager.attach(cinematic);
+            cinematic.setSpeed(2f);
+            cinematic.play();
+            cinematic.addListener(cel);
+            path.addListener( new MotionPathListener() {
+
+                public void onWayPointReach(MotionEvent motionControl, int wayPointIndex) {
+                    if (path.getNbWayPoints() == wayPointIndex + 1) {
+                        motionControl.dispose();
+                    }
+                }
+            });
+            
+            
+        }
+        camera = new ChaseCamera(cam,ball,inputManager);
+        camera.setDefaultDistance(50f);
+        
+
+
     }
+    
+    
     
     
     @Override
@@ -152,14 +212,31 @@ public class LevelState extends AbstractAppState implements ScreenController{
         float angle = cam.getUp().angleBetween(Vector3f.UNIT_Y);
         Quaternion rotatePointer = new Quaternion();
         rotatePointer.fromAngleAxis(FastMath.TWO_PI-angle,Vector3f.UNIT_X);
-        System.out.println("Angle from y: " + angle*FastMath.RAD_TO_DEG + " " + rotatePointer);
         gpointer.setLocalRotation(rotatePointer);
         
         if(goalControl.getOverlappingObjects().contains(ballControl)){
-            levelNumber++;
-            LevelState ls = new LevelState(bas,levelNumber,building,rotateNode,nifty);
-            stateManager.detach(this);
-            stateManager.attach(ls);
+            
+            if(levelNumber == 10){
+                guiFont = assetManager.loadFont("Interface/Fonts/Zorque.fnt");
+                rootNode.detachChild(goal);
+                rootNode.detachChild(ball);
+                BitmapText finished = new BitmapText(guiFont, false);
+                guiNode.detachAllChildren();
+                nifty.removeScreen("start");
+                finished.setSize(guiFont.getCharSet().getRenderedSize());      // font size
+                finished.setColor(ColorRGBA.White);                             // font color
+                finished.setText("YOU WON");             // the text
+                finished.setLocalTranslation(app.getContext().getSettings().getWidth()/2f, app.getContext().getSettings().getWidth()/2f, 0); // position
+                guiNode.attachChild(finished);
+            } else {
+                levelNumber++;
+                LevelState ls = new LevelState(bas,levelNumber,building,rotateNode,nifty,true);
+                stateManager.detach(this);
+                stateManager.attach(ls);
+                nifty.registerScreenController(ls);
+                nifty.fromXml("Interface/LevelScreen.xml", "start");
+                nifty.gotoScreen("start");
+            }
         }
         
     }
@@ -171,12 +248,14 @@ public class LevelState extends AbstractAppState implements ScreenController{
         guiNode.detachChild(gpointer);
         rotateNode.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
         Quaternion rotateZ90 = new Quaternion();
+        rotateZ90.fromAngleAxis(FastMath.HALF_PI, Vector3f.UNIT_Y);
+        
+        //rotateNode.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
         rotateNode.setLocalRotation(rotateZ90);
-        building.setLocalTranslation(0, -extent.getY(), 0);
-        rotateNode.detachChild(goal);
+        rootNode.detachChild(goal);
         rootNode.detachChild(ball);
-        bas.getPhysicsSpace().remove(goalControl);
-        bas.getPhysicsSpace().remove(ballControl);
+        //bas.getPhysicsSpace().remove(goalControl);
+        //bas.getPhysicsSpace().remove(ballControl);
         inputManager.removeListener(actionListener);
         inputManager.removeListener(analogListener);
 
@@ -192,9 +271,11 @@ public class LevelState extends AbstractAppState implements ScreenController{
         inputManager.addMapping("Switch", new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping("Down", new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping("Reset", new KeyTrigger(KeyInput.KEY_R));
+        inputManager.addMapping("Quit", new KeyTrigger(KeyInput.KEY_Q));
         inputManager.addListener(analogListener,"Left");
         inputManager.addListener(analogListener,"Right");
         inputManager.addListener(actionListener,"Switch");
+        inputManager.addListener(actionListener,"Quit");
         inputManager.addListener(actionListener,"Reset");
         inputManager.addListener(analogListener,"Down");
         inputManager.addListener(analogListener,"Up");
@@ -217,6 +298,8 @@ public class LevelState extends AbstractAppState implements ScreenController{
                 }
             } else if(name.equals("Reset") && !isPressed){
                 reset();
+            } else if(name.equals("Quit") && !isPressed){
+                app.stop();
             }
         }
         
@@ -262,26 +345,21 @@ public class LevelState extends AbstractAppState implements ScreenController{
         
          private void moveBuilding(String name, float value, float tpf){
             if(name.equals("Up")){
-                Vector3f dir = cam.getLeft();
                 Quaternion up = new Quaternion();
-                dir.setY(0);
-                dir.normalizeLocal().multLocal(tpf);
-                rotateNode.rotate(dir.getX(),dir.getY(),dir.getZ());
+                up.fromAngleAxis(2*FastMath.DEG_TO_RAD, Vector3f.UNIT_Z);
+                rotateNode.rotate(up);
             } else if(name.equals("Down")){
-                Vector3f dir = cam.getLeft();
-                dir.setY(0);
-                dir.normalizeLocal().multLocal(-tpf);
-                rotateNode.rotate(dir.getX(),dir.getY(),dir.getZ());            
+                Quaternion up = new Quaternion();
+                up.fromAngleAxis(-2*FastMath.DEG_TO_RAD, Vector3f.UNIT_Z);
+                rotateNode.rotate(up);            
             } else if(name.equals("Left")){
-                Vector3f dir = cam.getUp();
-                dir.setY(0);
-                dir.normalizeLocal().multLocal(tpf);
-                rotateNode.rotate(dir.getX(),dir.getY(),dir.getZ());
+                Quaternion up = new Quaternion();
+                up.fromAngleAxis(2*FastMath.DEG_TO_RAD, Vector3f.UNIT_X);
+                rotateNode.rotate(up);   ;
             } else if(name.equals("Right")){
-                Vector3f dir = cam.getUp();
-                dir.setY(0);
-                dir.normalizeLocal().multLocal(-tpf);
-                rotateNode.rotate(dir.getX(),dir.getY(),dir.getZ());
+                Quaternion up = new Quaternion();
+                up.fromAngleAxis(-2*FastMath.DEG_TO_RAD, Vector3f.UNIT_X);
+                rotateNode.rotate(up);
             }
          }
 
@@ -292,7 +370,7 @@ public class LevelState extends AbstractAppState implements ScreenController{
     }
     
     public void reset(){
-        LevelState ls = new LevelState(bas,levelNumber,building,rotateNode,nifty);
+        LevelState ls = new LevelState(bas,levelNumber,building,rotateNode,nifty,false);
         //nifty.fromXml("Interface/LevelScreen.xml", "start"); 
         stateManager.detach(this);
         stateManager.attach(ls);
@@ -309,4 +387,24 @@ public class LevelState extends AbstractAppState implements ScreenController{
 
     public void onEndScreen() {
     }
+    
+    CinematicEventListener cel = new CinematicEventListener() {
+        public void onPlay(CinematicEvent cinematic) {
+          
+        }
+
+        public void onPause(CinematicEvent cinematic) {
+          
+        }
+
+        public void onStop(CinematicEvent cinematic) {
+          rootNode.detachChild(camNode);
+          Quaternion originalRotation = new Quaternion();
+          originalRotation.fromAngleAxis(-FastMath.QUARTER_PI, Vector3f.UNIT_X);
+          camera = new ChaseCamera(cam,ball,inputManager);
+          camera.setDefaultDistance(50f);
+        }
+    };
+    
+    
 }
